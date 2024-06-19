@@ -23,7 +23,7 @@ if you want to use API Resource to list your generated APIs you can register the
 
 ## Screenshots
 
-![APIs Resource](https://raw.githubusercontent.com/tomatophp/filament-api/master/arts/api-resource.jpg)
+![APIs Resource](https://raw.githubusercontent.com/tomatophp/filament-api/master/arts/api-resource.png)
 
 ## Usage
 
