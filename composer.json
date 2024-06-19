@@ -1,13 +1,14 @@
 {
     "name": "tomatophp/filament-api",
     "type": "library",
-    "description": "Generate APIs from your filament resource",
+    "description": "Generate APIs from your filament resource using single line of code",
     "keywords": [
         "php",
         "laravel",
         "filamentphp",
         "generator",
         "tomatophp",
+        "filament-plugin",
         "api",
         "rest"
     ],
@@ -38,6 +39,7 @@
     "require": {
         "php": "^8.1|^8.2",
         "tomatophp/console-helpers": "^1.1",
-        "filament/filament": "^3.0.0"
+        "filament/filament": "^3.0.0",
+        "calebporzio/sushi": "*"
     }
 }
