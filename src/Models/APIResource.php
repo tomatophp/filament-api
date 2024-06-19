@@ -32,7 +32,7 @@ class APIResource extends Model
                     foreach ($page::registerAPIRoutes() as $item){
                         $routes[] = [
                             "method" => Str::of($item['method'])->upper()->toString(),
-                            "slug" => config('filament-api.api_prefix').$item['slug'],
+                            "slug" => config('filament-api.api_prefix').'/'.$item['slug'],
                             "name" => "filament.api.".$item['name'],
                             "table" => $item['table'],
                             "middleware" => json_encode($item['middleware']),
