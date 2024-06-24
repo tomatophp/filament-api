@@ -5,7 +5,7 @@ namespace TomatoPHP\FilamentApi;
 use Filament\Contracts\Plugin;
 use Filament\Panel;
 use TomatoPHP\FilamentApi\Facades\FilamentAPI;
-use TomatoPHP\FilamentApi\Filament\Resources\APIResource;
+use TomatoPHP\FilamentApi\Filament\Resources\ApiResource;
 
 
 class FilamentAPIPlugin implements Plugin
@@ -19,7 +19,7 @@ class FilamentAPIPlugin implements Plugin
     public function register(Panel $panel): void
     {
         $panel->resources([
-           APIResource::class
+            ApiResource::class
         ]);
     }
 
