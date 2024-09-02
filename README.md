@@ -3,13 +3,14 @@
 # Resource API Generator
 
 [![Latest Stable Version](https://poser.pugx.org/tomatophp/filament-api/version.svg)](https://packagist.org/packages/tomatophp/filament-api)
-[![PHP Version Require](http://poser.pugx.org/tomatophp/filament-api/require/php)](https://packagist.org/packages/tomatophp/filament-api)
 [![License](https://poser.pugx.org/tomatophp/filament-api/license.svg)](https://packagist.org/packages/tomatophp/filament-api)
 [![Downloads](https://poser.pugx.org/tomatophp/filament-api/d/total.svg)](https://packagist.org/packages/tomatophp/filament-api)
 
 Generate APIs from your filament resource using single line of code
 
 ## Installation
+
+make sure that you have SQLite3 Driver installed on your PHP config, because this package required it for caching.
 
 ```bash
 composer require tomatophp/filament-api
