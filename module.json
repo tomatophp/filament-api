@@ -1,0 +1,29 @@
+{
+    "name": "FilamentApi",
+    "alias": "filament-api",
+    "description": {
+        "ar": "Generate APIs from your filament resource using single line of code",
+        "en": "Generate APIs from your filament resource using single line of code",
+        "gr": "Generate APIs from your filament resource using single line of code",
+        "sp": "Generate APIs from your filament resource using single line of code"
+    },
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "TomatoPHP\\FilamentApi\\FilamentApiServiceProvider"
+    ],
+    "files": [],
+    "title": {
+        "ar": "Resource API Generator",
+        "en": "Resource API Generator",
+        "gr": "Resource API Generator",
+        "sp": "Resource API Generator"
+    },
+    "color": "#cc1448",
+    "icon": "heroicon-c-paper-airplane",
+    "placeholder": "https://raw.githubusercontent.com/tomatophp/filament-api/master/arts/3x1io-tomato-api.jpg",
+    "type": "plugin",
+    "version": "v1.0.2",
+    "github" : "https://github.com/tomatophp/filament-api",
+    "docs" : "https://github.com/tomatophp/filament-api"
+}
