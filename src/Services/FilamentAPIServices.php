@@ -174,11 +174,14 @@ class FilamentAPIServices
             $query->orderBy($table->getDefaultSortColumn(), $table->getDefaultSortDirection());
         }
 
-        if($resource){
-            return APIResponse::success($resource::collection($query->paginate($table->getDefaultPaginationPageOption())));
+        // Zmeňte z paginate na get pre získanie všetkých záznamov bez stránkovania
+        $results = $query->get();
+
+        if ($resource) {
+            return APIResponse::success($resource::collection($results));
         }
 
-        return APIResponse::success($query->paginate($table->getDefaultPaginationPageOption()));
+        return APIResponse::success($results);
     }
 
     protected function show(int $record, Request $request,Page $page,?string $resource=null)
@@ -200,7 +203,10 @@ class FilamentAPIServices
         $rules = [];
         $components = $form->getComponents();
         foreach ($components as $component) {
-            $rules[$component->getId()] = array_values($component->getValidationRules());
+            //$rules[$component->getId()] = array_values($component->getValidationRules());
+            if (method_exists($component, 'getValidationRules')) {
+                $rules[$component->getId()] = array_values($component->getValidationRules());
+            }
         }
 
         $request->validate($rules);
@@ -220,14 +226,19 @@ class FilamentAPIServices
         $rules = [];
         $components = $form->getComponents();
         foreach ($components as $component) {
-            $validation = $component->getValidationRules();
-            foreach ($validation as $key => $value){
-                if($value instanceof Unique){
-                    $validation[$key] = $value->ignore($record->id);
+            if (method_exists($component, 'getValidationRules')) {
+                $validation = $component->getValidationRules();
+
+                foreach ($validation as $key => $rule) {
+                    if ($rule instanceof Unique) {
+                        $validation[$key] = $rule->ignore($record->id);
+                    }
                 }
+
+                $rules[$component->getId()] = $validation;
             }
-            $rules[$component->getId()] = $validation;
         }
+
 
         $request->validate($rules);
 
