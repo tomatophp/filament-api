@@ -2,51 +2,61 @@
 
 namespace TomatoPHP\FilamentApi\Traits;
 
-use Filament\Forms\Form;
-use Filament\Resources\Pages\CreateRecord;
-use Filament\Resources\Pages\EditRecord;
-use Filament\Resources\Pages\ListRecords;
-use Filament\Resources\Pages\ManageRecords;
-use Filament\Resources\Pages\ViewRecord;
+use Filament\Schemas\Schema;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
 use TomatoPHP\FilamentApi\Facades\FilamentAPI;
-use TomatoPHP\FilamentCms\Services\Contracts\Page;
+use TomatoPHP\FilamentApi\Services\FilamentAPIServices;
 
+/**
+ * Add to a resource page (List, Manage, Create, Edit or View) to expose it as a JSON API.
+ */
 trait InteractWithAPI
 {
+    /**
+     * @return array<int, array<string, mixed>>
+     */
     public static function registerAPIRoutes(): array
     {
-        $page = (new self());
-        $pageType = match (get_parent_class($page)){
-            ListRecords::class => 'list',
-            ManageRecords::class => 'manager',
-            CreateRecord::class => 'create',
-            EditRecord::class => 'edit',
-            ViewRecord::class => 'view',
-            default => null
-        };
-
         return FilamentAPI::register(
-            (new self()),
-            fn(Form $form): Form => app((new self)::getResource())->form($form),
-            ($pageType === 'list' || $pageType === 'manager') ?fn(Table $table): Table => app((new self)::getResource())->table($table):null,
-            $pageType,
-            self::getFilamentAPIResource(),
-            self::getFilamentAPIMiddleware(),
-            self::getFilamentAPISlug(),
+            static::class,
+            FilamentAPIServices::getPageType(static::class),
+            static::getFilamentAPIResource(),
+            static::getFilamentAPIMiddleware(),
+            static::getFilamentAPISlug(),
         );
     }
 
+    /**
+     * The form whose fields validate and fill the store and update endpoints.
+     */
+    public static function getFilamentAPIForm(Schema $schema): Schema
+    {
+        return static::getResource()::form($schema);
+    }
+
+    /**
+     * The table whose visible columns, searchable columns and default sort shape the index endpoint.
+     */
+    public static function getFilamentAPITable(Table $table): Table
+    {
+        return static::getResource()::table($table);
+    }
+
+    /**
+     * @return class-string<JsonResource>|null
+     */
     public static function getFilamentAPIResource(): ?string
     {
         return null;
     }
 
+    /**
+     * @return array<int, string>
+     */
     public static function getFilamentAPIMiddleware(): array
     {
-        return config('filament-api.default_middleware');
+        return config('filament-api.default_middleware', []);
     }
 
     public static function getFilamentAPISlug(): ?string

@@ -3,42 +3,19 @@
 namespace TomatoPHP\FilamentApi\Console;
 
 use Illuminate\Console\Command;
-use TomatoPHP\ConsoleHelpers\Traits\RunCommand;
 
 class FilamentApiInstall extends Command
 {
-    use RunCommand;
+    protected $signature = 'filament-api:install';
 
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $name = 'filament-api:install';
+    protected $description = 'Publish the Filament API config file';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'install package and publish assets';
-
-    public function __construct()
+    public function handle(): int
     {
-        parent::__construct();
-    }
+        $this->callSilently('vendor:publish', ['--tag' => 'filament-api-config']);
 
+        $this->components->info('Filament API installed successfully.');
 
-    /**
-     * Execute the console command.
-     *
-     * @return mixed
-     */
-    public function handle()
-    {
-        $this->info('Publish Vendor Assets');
-        $this->artisanCommand(["migrate"]);
-        $this->artisanCommand(["optimize:clear"]);
-        $this->info('Filament API installed successfully.');
+        return self::SUCCESS;
     }
 }

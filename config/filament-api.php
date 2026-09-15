@@ -6,14 +6,14 @@ return [
      * API Prefix
      * -------------------------------------------
      */
-     "api_prefix" => "api",
+    'api_prefix' => 'api',
 
     /*
      * -------------------------------------------
      * API Middleware
      * -------------------------------------------
      */
-    "default_middleware" => [
-        "auth:sanctum"
+    'default_middleware' => [
+        'auth:sanctum',
     ],
 ];

@@ -2,7 +2,6 @@
 
 namespace TomatoPHP\FilamentApi\Filament\Resources\ApiResource\Pages;
 
-
 use Filament\Resources\Pages\ManageRecords;
 use TomatoPHP\FilamentApi\Filament\Resources\ApiResource;
 

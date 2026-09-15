@@ -6,33 +6,44 @@
 [![License](https://poser.pugx.org/tomatophp/filament-api/license.svg)](https://packagist.org/packages/tomatophp/filament-api)
 [![Downloads](https://poser.pugx.org/tomatophp/filament-api/d/total.svg)](https://packagist.org/packages/tomatophp/filament-api)
 
-Generate APIs from your filament resource using single line of code
+Generate JSON APIs from your Filament resources with a single line of code.
+
+## Version Compatibility
+
+| Plugin | Filament | Laravel | PHP |
+|--------|----------|---------|-----|
+| 1.x    | 3.x      | 10.x / 11.x | 8.1+ |
+| 5.x    | 5.x      | 12.x / 13.x | 8.2+ |
 
 ## Installation
 
-make sure that you have SQLite3 Driver installed on your PHP config, because this package required it for caching.
+The APIs list page keeps the generated endpoints in an in-memory SQLite table, so the `pdo_sqlite` PHP extension is required.
 
 ```bash
 composer require tomatophp/filament-api
+php artisan filament-api:install
 ```
 
-if you want to use API Resource to list your generated APIs you can register the plugin on `/app/Providers/Filament/AdminPanelProvider.php`
+To list the generated endpoints in your panel, register the plugin in `/app/Providers/Filament/AdminPanelProvider.php`:
 
 ```php
 ->plugin(\TomatoPHP\FilamentApi\FilamentAPIPlugin::make())
 ```
 
+The endpoints use the `auth:sanctum` middleware by default. Install [Laravel Sanctum](https://laravel.com/docs/sanctum) (`php artisan install:api`) or change `default_middleware` in `config/filament-api.php`.
+
 ## Screenshots
 
 ![APIs Resource](https://raw.githubusercontent.com/tomatophp/filament-api/master/arts/api-resource.png)
+![APIs Resource Dark](https://raw.githubusercontent.com/tomatophp/filament-api/master/arts/api-resource-dark.png)
 
 ## Usage
 
-you can generate API by add this trait to your resource pages
+Add the trait to your resource pages:
 
 ```php
+use Filament\Resources\Pages\ListRecords;
 use TomatoPHP\FilamentApi\Traits\InteractWithAPI;
-use \Filament\Resources\Pages\ListRecords;
 
 class ListPosts extends ListRecords
 {
@@ -40,48 +51,75 @@ class ListPosts extends ListRecords
 }
 ```
 
-and that's it you can now access your API by `/api/{slug}`
+That's it, the API is available under `/api/{slug}`. Each page type adds its endpoints:
 
-we provide 5 methods:
+| Page | Endpoints |
+|------|-----------|
+| `ListRecords` | GET `/api/{slug}` (list, `?search=` and `?page=`), DELETE `/api/{slug}/{id}` |
+| `ManageRecords` | all five endpoints |
+| `CreateRecord` | POST `/api/{slug}` |
+| `EditRecord` | PUT `/api/{slug}/{id}` |
+| `ViewRecord` | GET `/api/{slug}/{id}` |
 
-- GET `/api/{slug}` to list all records `support searching by use search=`
-- GET `/api/{slug}/{id}` to get single record
-- POST `/api/{slug}` to create new record
-- PUT `/api/{slug}/{id}` to update record
-- DELETE `/api/{slug}/{id}` to delete record
+- The list returns the visible columns of the resource table, searches its searchable columns and uses its default sort.
+  Relationship columns such as `author.name` are eager loaded and searchable.
+- Create and update validate the request with the rules of every field of the resource form (fields inside sections, tabs and grids included)
+  and save only the form fields.
+- Queries go through the resource `getEloquentQuery()`, so scopes, soft deletes and tenancy filters apply.
+- When the model has a policy, the `viewAny`, `view`, `create`, `update` and `delete` abilities are checked for the API user.
+- The routes point at a controller, so `php artisan route:cache` works.
 
-## Custom your API
+Responses look like `{"status": "success", "message": "OK", "data": ...}`; errors return `{"status": "error", "message": "..."}`
+with the status code (404, 403, and 422 with an `errors` object for validation).
 
-you can customize your api by override this methods
+## Customize your API
+
+Override these methods on the page:
 
 ```php
-// Use to return API JSON Resource on Index/Show/Store/Update
+// Return a JSON resource from the list, show, store and update endpoints
 public static function getFilamentAPIResource(): ?string
 {
-    return null;
+    return PostResource::class;
 }
 
-// Use To Custom Your Route Middleware
+// The middleware of the endpoints
 public static function getFilamentAPIMiddleware(): array
 {
-    return config('filament-api.default_middleware');
+    return ['auth:sanctum'];
 }
 
-// Use To Change the Endpoint Slug
+// The endpoint slug, defaults to the resource slug
 public static function getFilamentAPISlug(): ?string
 {
-    return null;
+    return 'articles';
+}
+
+// The form used to validate and save the store and update endpoints
+public static function getFilamentAPIForm(Schema $schema): Schema
+{
+    return static::getResource()::form($schema);
+}
+
+// The table used to shape the list endpoint
+public static function getFilamentAPITable(Table $table): Table
+{
+    return static::getResource()::table($table);
 }
 ```
 
 ## Publish Assets
 
-you can publish config file by use this command
-
 ```bash
 php artisan vendor:publish --tag="filament-api-config"
 ```
 
+## Testing
+
+```bash
+composer test
+```
+
 ## Other Filament Packages
 
-checkout our [Awesome TomatoPHP](https://github.com/tomatophp/awesome)
+Checkout our [Awesome TomatoPHP](https://github.com/tomatophp/awesome)

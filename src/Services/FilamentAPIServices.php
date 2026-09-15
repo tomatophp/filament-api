@@ -2,248 +2,163 @@
 
 namespace TomatoPHP\FilamentApi\Services;
 
-use Closure;
-use Filament\Forms\Form;
-use Filament\Pages\Page;
+use Filament\Facades\Filament;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Resources\Pages\ManageRecords;
+use Filament\Resources\Pages\Page;
 use Filament\Resources\Pages\ViewRecord;
-use Filament\Resources\Resource;
-use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-use Illuminate\Validation\Rules\Unique;
-use TomatoPHP\FilamentApi\Helpers\APIResponse;
+use TomatoPHP\FilamentApi\Traits\InteractWithAPI;
 
 class FilamentAPIServices
 {
-    private ?Page $page=null;
-    private ?Table $table=null;
-    private ?Form $form=null;
-    private ?array $routes=[];
+    /**
+     * The endpoints each kind of resource page exposes.
+     *
+     * @var array<string, array<int, string>>
+     */
+    public const ACTIONS = [
+        'list' => ['index', 'destroy'],
+        'manager' => ['index', 'destroy', 'store', 'update', 'show'],
+        'create' => ['store'],
+        'edit' => ['update'],
+        'view' => ['show'],
+    ];
 
+    /**
+     * @var array<string, string>
+     */
+    public const METHODS = [
+        'index' => 'get',
+        'show' => 'get',
+        'store' => 'post',
+        'update' => 'put',
+        'destroy' => 'delete',
+    ];
+
+    /**
+     * Routes registered by hand through the facade, keyed by route name.
+     *
+     * @var array<string, array<string, mixed>>
+     */
+    protected array $routes = [];
+
+    /**
+     * Routes discovered from the resource pages of every panel, keyed by route name.
+     *
+     * @var array<string, array<string, mixed>>|null
+     */
+    protected ?array $discovered = null;
+
+    /**
+     * Describe the endpoints of a resource page.
+     *
+     * @param  Page|class-string<Page>  $page
+     * @param  array<int, string>|null  $middleware
+     * @return array<int, array{table: string, method: string, slug: string, action: string, name: string, middleware: array<int, string>, page: class-string<Page>, resource: ?string}>
+     */
     public function register(
-        Page $page,
-        Closure $form,
-        ?Closure $table=null,
-        ?string $type=null,
-        ?string $resource=null,
-        ?array $middleware=null,
-        ?string $slug=null
-    ): array
-    {
-        return $this->generate(
-            $page,
-            $form(new Form($page)),
-            $table? $table(new Table($page)) : null,
-            $type,
-            $resource,
-            $middleware,
-            $slug
-        );
+        Page | string $page,
+        ?string $type = null,
+        ?string $resource = null,
+        ?array $middleware = null,
+        ?string $slug = null,
+    ): array {
+        $page = is_string($page) ? $page : $page::class;
+        $type ??= static::getPageType($page);
+        $slug ??= $page::getResource()::getSlug();
+        $middleware ??= config('filament-api.default_middleware', []);
+        $name = str_replace('/', '.', $slug);
+
+        return array_map(fn (string $action): array => [
+            'table' => $slug,
+            'method' => static::METHODS[$action],
+            'slug' => in_array($action, ['index', 'store'], true) ? $slug : "{$slug}/{record}",
+            'action' => $action,
+            'name' => "{$name}.{$action}",
+            'middleware' => array_values($middleware),
+            'page' => $page,
+            'resource' => $resource,
+        ], static::ACTIONS[$type] ?? []);
     }
 
-    public function generate(
-        Page $page,
-        Form $form,
-        ?Table $table=null,
-        ?string $type=null,
-        ?string $resource=null,
-        ?array $middleware=null,
-        ?string $slug=null
-    ): array
+    /**
+     * Find every resource page that uses the InteractWithAPI trait on every panel.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public function discover(): array
     {
         $routes = [];
-        $query = $page::getResource()::getEloquentQuery();
-        $slug  = $slug ?? $page::getResource()::getSlug();
 
-        // Index Method
-        if($type === 'list' || $type === 'manager'){
-            $routes[] = [
-              "table"=> $slug,
-              "method" => "get",
-              "slug" => $slug,
-              "callback" => function(Request $request) use ($query, $page, $table, $resource){
-                  return $this->index($request, $query, $page, $table, $resource);
-              },
-              "name" => $slug . ".index",
-              "middleware" => $middleware
-            ];
+        foreach (Filament::getPanels() as $panel) {
+            foreach ($panel->getResources() as $resource) {
+                foreach ($resource::getPages() as $registration) {
+                    $page = $registration->getPage();
 
-            // Delete Method
-            $routes[] = [
-                "table"=> $slug,
-                "method" => "delete",
-                "slug" => $slug. '/{model}',
-                "callback" => function ($record, Request $request) use ($page){
-                    return $this->destroy($record, $request, $page);
-                },
-                "name" => $slug . ".destroy",
-                "middleware" => $middleware
-            ];
+                    if (! in_array(InteractWithAPI::class, class_uses_recursive($page), true)) {
+                        continue;
+                    }
+
+                    foreach ($page::registerAPIRoutes() as $route) {
+                        $routes[$route['name']] = $route;
+                    }
+                }
+            }
         }
-
-        // Store Method
-        if($type === 'create'  || $type === 'manager'){
-            $routes[] = [
-                "table"=> $slug,
-                "method" => "post",
-                "slug" => $slug,
-                "callback" => function (Request $request) use ($page, $form, $resource){
-                    return $this->store($request, $page, $form, $resource);
-                },
-                "name" => $slug . ".store",
-                "middleware" => $middleware
-            ];
-        }
-
-        // Update Method
-        if($type === 'edit'  || $type === 'manager'){
-            $routes[] = [
-                "table"=> $slug,
-                "method" => "put",
-                "slug" => $slug. '/{model}',
-                "callback" => function ($record, Request $request) use ($page, $form, $resource){
-                    return $this->update($record, $request, $page, $form, $resource);
-                },
-                "name" => $slug . ".update",
-                "middleware" => $middleware
-            ];
-        }
-
-        // View Method
-        if($type === 'view'  || $type === 'manager'){
-            $routes[] = [
-                "table"=> $slug,
-                "method" => "get",
-                "slug" => $slug. '/{model}',
-                "callback" => function ($record, Request $request) use ($page, $resource){
-                    return $this->show($record, $request, $page, $resource);
-                },
-                "name" => $slug . ".show",
-                "middleware" => $middleware
-            ];
-        }
-
-
 
         return $routes;
     }
 
+    /**
+     * Add routes by hand. Accepts a flat list of routes or a list of route lists.
+     *
+     * @param  array<int, mixed>  $routes
+     */
     public function routes(array $routes): void
     {
-        $this->routes = array_merge($this->routes , $routes);
+        foreach ($routes as $route) {
+            if (is_array($route) && array_is_list($route)) {
+                $this->routes($route);
+
+                continue;
+            }
+
+            $this->routes[$route['name']] = $route;
+        }
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
     public function getRoutes(): array
     {
-        return $this->routes;
+        $this->discovered ??= $this->discover();
+
+        return array_values([...$this->discovered, ...$this->routes]);
     }
 
-    protected function index(Request $request,Builder $query,Page $page,Table $table,?string $resource=null)
+    /**
+     * Forget the discovered routes so the next call scans the panels again.
+     */
+    public function flush(): void
     {
-        if($request->has('search') && !empty($request->get('search'))){
-            $searchableColumns = [];
-            foreach ($table->getColumns() as $column){
-                if($column->isSearchable()){
-                    $searchableColumns[] = $column->getName();
-                }
-            }
-
-            $query->where(function($query) use ($searchableColumns, $request){
-                foreach ($searchableColumns as $column){
-                    $query->orWhere($column, 'like', '%' . $request->get('search') . '%');
-                }
-            });
-        }
-
-        $visiableColumns = [];
-        foreach ($table->getColumns() as $column){
-            if($column->isVisible()){
-                $visiableColumns[] = $column->getName();
-            }
-        }
-
-        $query->select($visiableColumns);
-
-        if($table->getDefaultSortColumn() && $table->getDefaultSortDirection()){
-            $query->orderBy($table->getDefaultSortColumn(), $table->getDefaultSortDirection());
-        }
-
-        if($resource){
-            return APIResponse::success($resource::collection($query->paginate($table->getDefaultPaginationPageOption())));
-        }
-
-        return APIResponse::success($query->paginate($table->getDefaultPaginationPageOption()));
+        $this->discovered = null;
     }
 
-    protected function show(int $record, Request $request,Page $page,?string $resource=null)
+    /**
+     * @param  class-string<Page>  $page
+     */
+    public static function getPageType(string $page): ?string
     {
-        $resourceClass = app($page::getResource());
-        $indexPage = app($resourceClass->getPages()['index']->getPage());
-        $table = $resourceClass->table(new Table($indexPage));
-        $record = app($page::getResource())->getModel()::find($record);
-
-        if($resource) {
-            return APIResponse::success($resource::make($record));
-        }
-
-        return APIResponse::success($record);
-    }
-
-    protected function store(Request $request, $page, $form,?string $resource=null)
-    {
-        $rules = [];
-        $components = $form->getComponents();
-        foreach ($components as $component) {
-            $rules[$component->getId()] = array_values($component->getValidationRules());
-        }
-
-        $request->validate($rules);
-
-        $record = app($page::getResource())->getModel()::create($request->all());
-
-        if($resource) {
-            return APIResponse::success($resource::make($record));
-        }
-
-        return APIResponse::success($record);
-    }
-
-    protected function update($record, Request $request, $page, $form,?string $resource=null)
-    {
-        $record = app($page::getResource())->getModel()::find($record);
-        $rules = [];
-        $components = $form->getComponents();
-        foreach ($components as $component) {
-            $validation = $component->getValidationRules();
-            foreach ($validation as $key => $value){
-                if($value instanceof Unique){
-                    $validation[$key] = $value->ignore($record->id);
-                }
-            }
-            $rules[$component->getId()] = $validation;
-        }
-
-        $request->validate($rules);
-
-        $record->update($request->all());
-
-        if($resource) {
-            return APIResponse::success($resource::make($record));
-        }
-
-        return APIResponse::success($record);
-    }
-
-    protected function destroy($record, Request $request, $page)
-    {
-        $record = app($page::getResource())->getModel()::find($record)?->delete();
-
-        return APIResponse::success();
+        return match (true) {
+            is_a($page, ManageRecords::class, true) => 'manager',
+            is_a($page, ListRecords::class, true) => 'list',
+            is_a($page, CreateRecord::class, true) => 'create',
+            is_a($page, EditRecord::class, true) => 'edit',
+            is_a($page, ViewRecord::class, true) => 'view',
+            default => null,
+        };
     }
 }

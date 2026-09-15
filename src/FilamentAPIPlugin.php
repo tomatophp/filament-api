@@ -4,13 +4,10 @@ namespace TomatoPHP\FilamentApi;
 
 use Filament\Contracts\Plugin;
 use Filament\Panel;
-use TomatoPHP\FilamentApi\Facades\FilamentAPI;
 use TomatoPHP\FilamentApi\Filament\Resources\ApiResource;
-
 
 class FilamentAPIPlugin implements Plugin
 {
-    protected array $routes = [];
     public function getId(): string
     {
         return 'filament-api';
@@ -19,17 +16,14 @@ class FilamentAPIPlugin implements Plugin
     public function register(Panel $panel): void
     {
         $panel->resources([
-            ApiResource::class
+            ApiResource::class,
         ]);
     }
 
-    public function boot(Panel $panel): void
-    {
-
-    }
+    public function boot(Panel $panel): void {}
 
     public static function make(): static
     {
-        return new static();
+        return app(static::class);
     }
 }
