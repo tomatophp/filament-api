@@ -2,6 +2,12 @@
     "name": "tomatophp/filament-api",
     "type": "library",
     "description": "Generate APIs from your filament resource using single line of code",
+    "homepage": "https://tomatophp.com/en/plugins/filament-api",
+    "support": {
+        "issues": "https://github.com/tomatophp/filament-api/issues",
+        "source": "https://github.com/tomatophp/filament-api",
+        "docs": "https://tomatophp.com/en/plugins/filament-api"
+    },
     "keywords": [
         "php",
         "laravel",
